@@ -1,9 +1,10 @@
 import os
 import logging
+import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
-import asyncio
+from aiohttp import web
 
 TOKEN = "9057323164:AAGvCVZ5M8bzv-sm-_N_MHWjOWywm12T-zo"
 
@@ -29,8 +30,25 @@ async def handle_screenshots(message: Message):
     )
     await message.answer(response_text, parse_mode="Markdown")
 
+# Веб-заглушка для Render, чтобы он видел открытый порт и считал сервис живым
+async def handle_web(request):
+    return web.Response(text="Bot is running!")
+
+async def web_server():
+    app = web.Application()
+    app.router.add_get("/", handle_web)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.environ.get("PORT", 10000))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+
 async def main():
-    await dp.start_polling(bot)
+    # Запускаем и веб-сервер для Render, и бесконечный опрос Telegram
+    await asyncio.gather(
+        web_server(),
+        dp.start_polling(bot)
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
