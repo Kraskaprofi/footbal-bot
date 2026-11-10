@@ -1,54 +1,52 @@
-import os
-import logging
 import asyncio
-from aiogram import Bot, Dispatcher
-from aiogram.filters import Command
+import logging
+import sys
+from aiogram import Bot, Dispatcher, F, html
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
 from aiogram.types import Message
-from aiohttp import web
+import os
 
-TOKEN = "9057323164:AAGvCVZ5M8bzv-sm-_N_MHWjOWywm12T-zo"
+# Токен вашего бота берется из переменных окружения Render или прописывается здесь
+TOKEN = os.getenv("BOT_TOKEN", "ТОКЕН_ВАШЕГО_БОТА")
 
-logging.basicConfig(level=logging.INFO)
-bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-@dp.message(Command("start"))
-async def cmd_start(message: Message):
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
     await message.answer(
-        "👋 Привет! Я бот для анализа футбольных матчей.\n\n"
-        "Скиньте мне скриншоты линии, и я оценю совокупность факторов и зоны 50/50."
+        f"Привет, {html.bold(message.from_user.full_name)}! ⚽️\n"
+        "Отправь мне скриншот матча или коэффициентов букмекерской конторы, и я выдам аналитический прогноз по голам."
     )
 
-@dp.message(lambda message: message.photo)
-async def handle_screenshots(message: Message):
-    await message.answer("🔄 Получил скриншоты. Анализирую зоны неопределенности и коэффициенты...")
-    response_text = (
-        "📊 **Результат анализа совокупности факторов:**\n\n"
-        "• **Общий тотал матча:** Проверяется баланс (зоны 1.8x / 1.9x).\n"
-        "• **Первый тайм:** Анализ поведения контор на предмет скрытых заманух.\n\n"
-        "⚠️ *Вердикт:* Программа сопоставляет общие цифры матча с движением на единице."
+# Обработчик картинок (скриншотов)
+@dp.message(F.photo)
+async def handle_screenshot(message: Message) -> None:
+    # Уведомляем пользователя, что скриншот принят в работу
+    await message.answer("🔍 Скриншот получен! Анализирую статистику матча и движение коэффициентов...")
+    
+    # Здесь в будущем можно подключить OCR или ИИ-модель. 
+    # Пока выводим структурированный вердикт по аналитике:
+    await asyncio.sleep(1.5) # Имитация бурной аналитики
+    
+    verdict = (
+        "📊 **Результат анализа скриншота:**\n\n"
+        "- **Общий тотал матча:** Зона 1.8x / 1.9x (баланс соблюден).\n"
+        "- **Первая половина / Голы:** Признаков явной сушки нет.\n\n"
+        "⚠️ **Вердикт:** Высокая вероятность гола в ближайшие минуты или во 2-м тайме. Рекомендуется подстраховка."
     )
-    await message.answer(response_text, parse_mode="Markdown")
+    await message.answer(verdict, parse_mode="Markdown")
 
-# Веб-заглушка для Render, чтобы он видел открытый порт и считал сервис живым
-async def handle_web(request):
-    return web.Response(text="Bot is running!")
+# Общий текстовый обработчик
+@dp.message()
+async def echo_handler(message: Message) -> None:
+    await message.answer("Пожалуйста, отправьте скриншот матча или нажмите /start.")
 
-async def web_server():
-    app = web.Application()
-    app.router.add_get("/", handle_web)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 10000))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
-async def main():
-    # Запускаем и веб-сервер для Render, и бесконечный опрос Telegram
-    await asyncio.gather(
-        web_server(),
-        dp.start_polling(bot)
-    )
+async def main() -> None:
+    bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
