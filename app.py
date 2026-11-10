@@ -9,7 +9,7 @@ from aiogram.types import Message
 import os
 
 # Токен вашего бота берется из переменных окружения Render или прописывается здесь
-TOKEN = os.getenv("BOT_TOKEN", "ТОКЕН_ВАШЕГО_БОТА")
+TOKEN = "ВАШ_РЕАЛЬНЫЙ_ТОКЕН_ИЗ_BOTFATHER"
 
 dp = Dispatcher()
 
